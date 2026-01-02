@@ -1,0 +1,40 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<canvas @ref="canvasRef" width="400" height="400" style="width: 100%; height: 100%; image-rendering: crisp-edges;"></canvas>
+
+@code {
+    [Parameter] public string ObjectType { get; set; } = "planet";
+    [Parameter] public string ObjectId { get; set; } = "";
+    [Parameter] public int MainBodySize { get; set; } = 15;
+    [Parameter] public int OrbitingBodySize { get; set; } = 5;
+    [Parameter] public int OrbitRadius { get; set; } = 100;
+    [Parameter] public int OrbitTilt { get; set; } = 45;
+    [Parameter] public int TiltAxis { get; set; } = 0;
+    [Parameter] public int OrbitAngle { get; set; } = 90;
+    
+    private ElementReference canvasRef;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await GenerateOrbit();
+        }
+    }
+    
+    private async Task GenerateOrbit()
+    {
+        await JSRuntime.InvokeVoidAsync("generateOrbit", canvasRef, new
+        {
+            mainBodySize = MainBodySize,
+            orbitingBodySize = OrbitingBodySize,
+            orbitRadius = OrbitRadius,
+            orbitLineWidth = 2,
+            orbitTilt = OrbitTilt,
+            tiltAxis = TiltAxis,
+            orbitAngle = OrbitAngle,
+            pixelation = 2
+        });
+    }
+}

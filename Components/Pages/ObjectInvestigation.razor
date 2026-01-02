@@ -1,0 +1,1271 @@
+@page "/object-investigation"
+@rendermode InteractiveServer
+@inject SpaceGame2.Services.GlobalVariables GlobalVars
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@using System.Text.Json.Serialization
+@using System.Text.Json
+@using Microsoft.JSInterop
+
+<PageTitle>Object Investigation</PageTitle>
+
+<SpaceGame2.Components.DialoguePopup @ref="dialoguePopup" />
+
+<div style="display: flex; align-items: center; justify-content: space-between;">
+    <h1>OBJECT INVESTIGATION</h1>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <button @onclick="ToggleDevMode" style="background: @(GlobalVars.DevMode ? "#ff0000" : "#333"); color: #fff; border: 1px solid #fff; padding: 5px 10px; font-size: 10px; cursor: pointer;">
+            DEV: @(GlobalVars.DevMode ? "ON" : "OFF")
+        </button>
+        @if (GlobalVars.DevMode)
+        {
+            <div style="font-size: 12px; text-align: right;">
+                <p style="margin: 0;">@GlobalVars.GetCurrentDateTime()</p>
+                <p style="margin: 0;">DEBUG: Current Object ID: @GlobalVars.CurrentObjectId | Object Name: @(currentObject?.Name ?? "Loading...") | Completed: [@string.Join(", ", GlobalVars.CompletedInvestigations)] | Game State: @GlobalVars.GameState</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="investigation-container">
+    <div class="left-column">
+        <div class="timer-display">
+            <div class="timer-label">SYSTEM TIME</div>
+            <div class="timer-value">@GlobalVars.GetCurrentDateTime()</div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="tabs">
+            <button class="tab @(activeTab == "physical" ? "active" : "")" @onclick="SetPhysicalTab">PHYSICAL</button>
+            <div class="tab-connector @(physicalLoaded ? "completed" : "")"></div>
+            <button class="tab @(activeTab == "spectroscopy" ? "active" : "") @(!physicalLoaded ? "disabled" : "")" @onclick="SetSpectroscopyTab" disabled="@(!physicalLoaded)">SPECTROSCOPY</button>
+            <div class="tab-connector @(spectroscopyLoaded ? "completed" : "")"></div>
+            <button class="tab @(activeTab == "signal" ? "active" : "") @(!spectroscopyLoaded ? "disabled" : "")" @onclick="SetSignalTab" disabled="@(!spectroscopyLoaded)">SIGNAL</button>
+        </div>
+        
+        <div class="content-box">
+            @if (activeTab == "physical")
+            {
+                @if (physicalLoading)
+                {
+                    <div class="loading-animation">
+                        <p>SCANNING PHYSICAL PROPERTIES...</p>
+                        <div class="loading-dots">...</div>
+                    </div>
+                }
+                else if (!physicalLoaded)
+                {
+                    <div class="mini-game" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h4>ORBITAL PROBE DEPLOYMENT</h4>
+                        <canvas id="orbitCanvas" width="640" height="480" style="border: 2px solid #fff; background: #000; cursor: crosshair; max-width: 100%; max-height: 400px;"></canvas>
+                        <div class="game-controls" style="margin-top: 10px;">
+                            <p style="margin: 5px 0;">Click probe to engage, aim trajectory, click to launch</p>
+                            <button @onclick="ResetOrbitGame" style="margin-right: 10px;">RESET</button>
+                            @if (GlobalVars.DevMode)
+                            {
+                                <button @onclick="AutoSolvePhysical" class="debug-btn" style="padding: 5px 10px; font-size: 10px;">DEBUG</button>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="content-layout">
+                        <div class="left-image @(leftImageLoaded ? "loaded" : "")">
+                            @if (leftImageLoaded)
+                            {
+                                <SpaceGame2.Components.LidarGenerator 
+                                    ObjectType="@(currentObject?.Type ?? "planet")"
+                                    ObjectId="@(currentObject?.Id ?? "default")"
+                                    ObjectShape="@(currentObject?.Shape ?? "sphere")"
+                                    RotationX="@lidarRotationX"
+                                    RotationY="@lidarRotationY"
+                                    RotationZ="@lidarRotationZ" />
+                                <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; font-size: 10px;">
+                                    <div style="text-align: center; color: #fff;">ROTATION CONTROL</div>
+                                    <canvas @ref="rotationOrbRef" width="120" height="120" style="display: block; margin: 0 auto; cursor: grab;"></canvas>
+                                    <div style="text-align: center; font-size: 8px;">X: @lidarRotationX° Y: @lidarRotationY°</div>
+                                </div>
+                            }
+                            <div class="ruler @(bottomRightLoaded ? "loaded" : "")">
+                                @if (bottomRightLoaded)
+                                {
+                                    <div class="ruler-line"></div>
+                                    <div class="ruler-label">@(currentObject?.Physical?.Scale ?? "unknown")</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="right-panel">
+                            <div class="top-right-image @(topRightLoaded ? "loaded" : "")">
+                                @if (topRightLoaded)
+                                {
+                                    <SpaceGame2.Components.OrbitGenerator 
+                                        ObjectType="@(currentObject?.Type ?? "planet")" 
+                                        ObjectId="@(currentObject?.Id ?? "default")"
+                                        MainBodySize="@(currentObject?.Physical?.Orbit?.MainBodySize ?? 15)"
+                                        OrbitingBodySize="@(currentObject?.Physical?.Orbit?.OrbitingBodySize ?? 5)"
+                                        OrbitRadius="@(currentObject?.Physical?.Orbit?.OrbitRadius ?? 100)"
+                                        OrbitTilt="@(currentObject?.Physical?.Orbit?.OrbitTilt ?? 45)"
+                                        TiltAxis="@(currentObject?.Physical?.Orbit?.TiltAxis ?? 0)"
+                                        OrbitAngle="@(currentObject?.Physical?.Orbit?.OrbitAngle ?? 90)" />
+                                }
+                            </div>
+                            <div class="bottom-right-data @(bottomRightLoaded ? "loaded" : "")">
+                                @if (bottomRightLoaded)
+                                {
+                                    <div class="size-legend">
+                                        <div class="legend-item">
+                                            <span class="size-range">&lt;530 KM</span>
+                                            <span>ASTEROID</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="size-range">~1.7k KM</span>
+                                            <span>DWARF PLANET</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="size-range">~8.9k KM</span>
+                                            <span>ROCKY PLANET</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="size-range">~96.5k KM</span>
+                                            <span>GIANT PLANET</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="size-range">&gt;140k KM</span>
+                                            <span>STAR</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else if (activeTab == "spectroscopy")
+            {
+                @if (spectroscopyLoading)
+                {
+                    <div class="loading-animation">
+                        <p>ANALYZING SPECTRUM...</p>
+                        <div class="loading-dots">...</div>
+                    </div>
+                }
+                else if (!spectroscopyLoaded)
+                {
+                    <div class="mini-game" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h4>RAY DEFLECTION ANALYSIS</h4>
+                        <canvas id="spectroscopyCanvas" width="640" height="480" style="border: 2px solid #fff; background: #000; cursor: crosshair; max-width: 100%; max-height: 400px;"></canvas>
+                        <div class="game-controls" style="margin-top: 10px;">
+                            <p style="margin: 5px 0;">Drag mirrors to deflect the ray to the target</p>
+                            <button @onclick="ResetRayDeflectionGame" style="margin-right: 10px;">RESET</button>
+                            @if (GlobalVars.DevMode)
+                            {
+                                <button @onclick="AutoSolveSpectroscopy" class="debug-btn" style="padding: 5px 10px; font-size: 10px;">DEBUG</button>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="content-layout">
+                        <div class="left-image @(spectroLeftLoaded ? "loaded" : "")">
+                            @if (spectroLeftLoaded)
+                            {
+                                <canvas id="crossSectionCanvas" width="400" height="400" style="width: 100%; height: 100%; background: #000; border: 1px solid #fff;"></canvas>
+                                <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #fff; font-size: 10px;">
+                                    <div id="sliceDisplay" style="text-align: center; margin-bottom: 5px; color: #fff;">SLICE POSITION: 0.00</div>
+                                    <input type="range" id="crossSlider" min="-2" max="2" step="0.01" value="0" style="width: 100%; background: #333; border: 1px solid #fff;" />
+                                </div>
+                            }
+                        </div>
+                        <div class="right-panel">
+                            <div class="top-right-image @(spectroTopLoaded ? "loaded" : "")">
+                                @if (spectroTopLoaded)
+                                {
+                                    <img src="@GetSpectrumImage()" alt="Spectrum Chart" />
+                                }
+                            </div>
+                            <div class="bottom-right-data @(spectroBottomLoaded ? "loaded" : "")">
+                                @if (spectroBottomLoaded)
+                                {
+                                    <div class="spectro-legend">
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #FF6666;"></div>
+                                            <span>TOXIC</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #0066FF;"></div>
+                                            <span>HABITABLE</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #00FF00;"></div>
+                                            <span>ORGANIC LIFE</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #FFD700;"></div>
+                                            <span>VALUABLE</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #808080;"></div>
+                                            <span>UNKNOWN</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-color" style="background: #000000; border: 1px solid #fff;"></div>
+                                            <span>DENSE</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else if (activeTab == "signal")
+            {
+                @if (signalLoading)
+                {
+                    <div class="loading-animation">
+                        <p>PROCESSING SIGNALS...</p>
+                        <div class="loading-dots">...</div>
+                    </div>
+                }
+                else if (!signalLoaded)
+                {
+                    <div class="mini-game" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h4>SIGNAL INTERFERENCE ANALYSIS</h4>
+                        <canvas id="signalCanvas" width="640" height="400" style="border: 2px solid #fff; background: #000; cursor: pointer; max-width: 100%; max-height: 400px;"></canvas>
+                        <div class="game-controls" style="margin-top: 10px;">
+                            <p style="margin: 5px 0;">Drag wave sliders to align interference patterns</p>
+                            <button @onclick="ResetSignalGame" style="margin-right: 10px;">RESET</button>
+                            @if (GlobalVars.DevMode)
+                            {
+                                <button @onclick="AutoSolveSignal" class="debug-btn" style="padding: 5px 10px; font-size: 10px;">DEBUG</button>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="signal-layout">
+                        <div class="signal-top-section">
+                            <div class="signal-image-section @(signalTextLoaded ? "loaded" : "")">
+                                <h4>IMAGE DATA</h4>
+                                @if (signalTextLoaded && !string.IsNullOrEmpty(currentObject?.Signal?.ImagePath))
+                                {
+                                    <img src="@currentObject.Signal.ImagePath" alt="Signal Image" style="max-width: 100%; max-height: 150px; object-fit: contain;" />
+                                }
+                                else if (signalTextLoaded)
+                                {
+                                    <p>No image data detected.</p>
+                                }
+                            </div>
+                            
+                            <div class="signal-right-section">
+                                @if (!string.IsNullOrEmpty(currentObject?.Signal?.Timestamp) && currentObject?.Id != "object-1" && currentObject?.Id != "object-2" && currentObject?.Id != "object-3" && currentObject?.Id != "object-4" && currentObject?.Id != "object-5")
+                                {
+                                    <div class="signal-time-section @(signalTextLoaded ? "loaded" : "")">
+                                        @if (signalTextLoaded)
+                                        {
+                                            <span>@currentObject.Signal.Timestamp</span>
+                                        }
+                                    </div>
+                                    
+                                    <div class="signal-audio-section @(signalTextLoaded ? "loaded" : "")">
+                                        <h4>AUDIO SIGNALS</h4>
+                                        @if (signalTextLoaded && !string.IsNullOrEmpty(currentObject?.Signal?.AudioPath))
+                                        {
+                                            <audio controls style="width: 100%;">
+                                                <source src="@currentObject.Signal.AudioPath" type="audio/mpeg">
+                                                Audio not supported
+                                            </audio>
+                                        }
+                                        else if (signalTextLoaded)
+                                        {
+                                            <p>No audio signals detected.</p>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="signal-audio-section no-time @(signalTextLoaded ? "loaded" : "")">
+                                        <h4>AUDIO SIGNALS</h4>
+                                        @if (signalTextLoaded && !string.IsNullOrEmpty(currentObject?.Signal?.AudioPath))
+                                        {
+                                            <audio controls style="width: 100%;">
+                                                <source src="@currentObject.Signal.AudioPath" type="audio/mpeg">
+                                                Audio not supported
+                                            </audio>
+                                        }
+                                        else if (signalTextLoaded)
+                                        {
+                                            <p>No audio signals detected.</p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="signal-text-section @(signalTextLoaded ? "loaded" : "")">
+                            <h4>TEXT SIGNALS</h4>
+                            @if (signalTextLoaded)
+                            {
+                                <div class="signal-content" style="text-align: left;">
+                                    <div id="signal-typewriter">@((MarkupString)displayedSignalText)</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    
+    <div class="form-column">
+        <h3>FORM</h3>
+        <div class="form-content">
+            <div class="form-field">
+                <label>CLASSIFY OBJECT:</label>
+                <select @bind="classification">
+                    <option value="">Select...</option>
+                    <option value="planet">Planet</option>
+                    <option value="asteroid">Asteroid</option>
+                    <option value="star">Star</option>
+                    <option value="space junk">Space Junk</option>
+                    <option value="alien">Alien</option>
+                    <option value="not enough information">Not Enough Information</option>
+                </select>
+            </div>
+            
+            <div class="form-field">
+                <label>IS THERE LIFE:</label>
+                <select @bind="lifeStatus">
+                    <option value="">Select...</option>
+                    <option value="no life">No Life</option>
+                    <option value="artificial life">Artificial Life</option>
+                    <option value="living beings">Living Beings</option>
+                    <option value="not enough information">Not Enough Information</option>
+                </select>
+            </div>
+            
+            <div class="form-field">
+                <label>COMPOSITION:</label>
+                <select @bind="composition">
+                    <option value="">Select...</option>
+                    <option value="valuable">Valuable</option>
+                    <option value="not valuable">Not Valuable</option>
+                    <option value="not enough information">Not Enough Information</option>
+                </select>
+            </div>
+            
+            <div class="form-field">
+                <label>SALVAGEABLE TECH:</label>
+                <select @bind="salvageableTech">
+                    <option value="">Select...</option>
+                    <option value="yes">Yes</option>
+                    <option value="none">None</option>
+                    <option value="not enough information">Not Enough Information</option>
+                </select>
+            </div>
+            
+            <div class="form-field">
+                <label>INHABITABLE:</label>
+                <select @bind="inhabitable">
+                    <option value="">Select...</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                    <option value="not enough information">Not Enough Information</option>
+                </select>
+            </div>
+            
+            <button class="submit-btn @(IsFormComplete() ? "active" : "")" @onclick="SubmitForm" disabled="@(!IsFormComplete())">
+                SUBMIT REPORT
+            </button>
+            
+            @if (GlobalVars.DevMode)
+            {
+                <button @onclick="AutoSolve" class="debug-btn" style="width: 100%; margin-top: 10px; padding: 10px; font-size: 10px;">
+                    DEBUG: AUTO SOLVE
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@if (showWarningPopup)
+{
+    <div class="dialogue-overlay">
+        <div class="dialogue-popup">
+            <div class="dialogue-content" style="padding: 30px; text-align: center;">
+                <h4>WARNING</h4>
+                <p>@warningMessage</p>
+                <button @onclick="CloseWarningPopup" class="dialogue-btn">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showSuccessPopup)
+{
+    <div class="dialogue-overlay">
+        <div class="dialogue-popup">
+            <div class="dialogue-content" style="padding: 30px; text-align: center;">
+                <h4>MISSION COMPLETE!</h4>
+                <p>All answers correct!</p>
+                <button @onclick="CloseSuccessPopup" class="dialogue-btn">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "physical";
+    private SpaceObject? currentObject;
+    private bool showSuccessPopup = false;
+    
+    private bool physicalLoaded = false, spectroscopyLoaded = false, signalLoaded = false;
+    private bool physicalLoading = false, spectroscopyLoading = false, signalLoading = false;
+    private bool leftImageLoaded = false, topRightLoaded = false, bottomRightLoaded = false;
+    private bool spectroLeftLoaded = false, spectroTopLoaded = false, spectroBottomLoaded = false;
+    private bool signalTextLoaded = false;
+    private string displayedSignalText = "";
+    private Timer? signalTypewriterTimer;
+    
+    private string[] signalPattern = new string[4] { "◆", "◆", "◆", "◆" };
+    private string[] targetPattern = new string[4] { "◆", "◆", "◆", "◆" };
+    private Random gameRandom = new();
+    
+    private int lidarRotationX = 20;
+    private int lidarRotationY = 30;
+    private int lidarRotationZ = 0;
+    private ElementReference rotationOrbRef;
+    private bool orbInitialized = false;
+    
+    private string classification = "", lifeStatus = "", composition = "", salvageableTech = "", inhabitable = "";
+    private SpaceGame2.Components.DialoguePopup? dialoguePopup;
+    private int attemptCount = 0;
+    private bool showWarningPopup = false;
+    private string warningMessage = "";
+    
+    private IJSObjectReference? orbitGameRef;
+    private IJSObjectReference? rayDeflectionGameRef;
+    private IJSObjectReference? signalGameRef;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        GlobalVars.OnTimeChanged += () => InvokeAsync(StateHasChanged);
+        await LoadCurrentObject();
+    }
+    
+    public void Dispose()
+    {
+        GlobalVars.OnTimeChanged -= () => InvokeAsync(StateHasChanged);
+        signalTypewriterTimer?.Dispose();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadCurrentObject();
+            StateHasChanged();
+            await InitializeOrbitGame();
+            await InitializeRayDeflectionGame();
+            
+            if (GlobalVars.ObjectsInvestigated == 0)
+            {
+                await Task.Delay(500);
+                if (dialoguePopup != null)
+                {
+                    await dialoguePopup.ShowDialogue("first-target-found");
+                }
+            }
+        }
+    }
+    
+    private async Task InitializeOrbitGame()
+    {
+        try
+        {
+            orbitGameRef = await JSRuntime.InvokeAsync<IJSObjectReference>("initOrbitGame", "orbitCanvas");
+            
+            _ = Task.Run(async () => {
+                while (!physicalLoaded)
+                {
+                    await Task.Delay(1000);
+                    await CheckOrbitGameSuccess();
+                }
+            });
+        }
+        catch { }
+    }
+    
+    private async Task InitializeRayDeflectionGame()
+    {
+        try
+        {
+            rayDeflectionGameRef = await JSRuntime.InvokeAsync<IJSObjectReference>("initRayDeflectionGame", "spectroscopyCanvas");
+            
+            _ = Task.Run(async () => {
+                while (!spectroscopyLoaded)
+                {
+                    await Task.Delay(1000);
+                    await CheckRayDeflectionGameSuccess();
+                }
+            });
+        }
+        catch { }
+    }
+    
+    private async Task InitializeSignalGame()
+    {
+        try
+        {
+            Console.WriteLine("Attempting to initialize signal game...");
+            signalGameRef = await JSRuntime.InvokeAsync<IJSObjectReference>("initSignalGame", "signalCanvas");
+            Console.WriteLine("Signal game initialized successfully");
+            
+            _ = Task.Run(async () => {
+                while (!signalLoaded)
+                {
+                    await Task.Delay(1000);
+                    await CheckSignalGameSuccess();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing signal game: {ex.Message}");
+        }
+    }
+    
+    private async Task CheckSignalGameSuccess()
+    {
+        try
+        {
+            if (signalGameRef != null && !signalLoaded)
+            {
+                var isSuccess = await signalGameRef.InvokeAsync<bool>("isComplete");
+                if (isSuccess)
+                {
+                    signalLoading = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(2000);
+                    
+                    signalLoaded = true;
+                    signalLoading = false;
+                    
+                    await Task.Delay(400);
+                    signalTextLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    StartSignalTypewriter();
+                    await CheckAllTabsComplete();
+                }
+            }
+        }
+        catch { }
+    }
+    
+    private async Task CheckOrbitGameSuccess()
+    {
+        try
+        {
+            if (orbitGameRef != null && !physicalLoaded)
+            {
+                var isSuccess = await orbitGameRef.InvokeAsync<bool>("isSuccess");
+                if (isSuccess)
+                {
+                    physicalLoading = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(2000);
+                    
+                    physicalLoaded = true;
+                    physicalLoading = false;
+                    
+                    ResetPhysicalImages();
+                    await Task.Delay(200);
+                    leftImageLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(400);
+                    topRightLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(600);
+                    bottomRightLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(100);
+                    await InitializeRotationOrb();
+                    orbInitialized = true;
+                }
+            }
+        }
+        catch { }
+    }
+    
+    private async Task CheckRayDeflectionGameSuccess()
+    {
+        try
+        {
+            if (rayDeflectionGameRef != null && !spectroscopyLoaded)
+            {
+                var isSuccess = await rayDeflectionGameRef.InvokeAsync<bool>("isComplete");
+                if (isSuccess)
+                {
+                    spectroscopyLoading = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(2000);
+                    
+                    spectroscopyLoaded = true;
+                    spectroscopyLoading = false;
+                    
+                    ResetSpectroscopyImages();
+                    await Task.Delay(200);
+                    spectroLeftLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(400);
+                    spectroTopLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(600);
+                    spectroBottomLoaded = true;
+                    await InvokeAsync(StateHasChanged);
+                    
+                    await Task.Delay(100);
+                    await InitializeSliceSlider();
+                    
+                    await CheckAllTabsComplete();
+                }
+            }
+        }
+        catch { }
+    }
+    
+    private async Task LoadCurrentObject()
+    {
+        try
+        {
+            var jsonData = await JSRuntime.InvokeAsync<JsonElement[]>("loadJsonData");
+            var objects = jsonData.Select(ParseSpaceObject).ToList();
+            
+            // Use the current object ID from GlobalVars (set by StellarSearch)
+            currentObject = objects.FirstOrDefault(o => o.Id == GlobalVars.CurrentObjectId) ?? objects.FirstOrDefault() ?? CreateDefaultObject();
+        }
+        catch
+        {
+            currentObject = CreateDefaultObject();
+        }
+    }
+    
+    private SpaceObject ParseSpaceObject(JsonElement json)
+    {
+        return new SpaceObject
+        {
+            Id = json.GetProperty("id").GetString() ?? "",
+            Name = json.GetProperty("name").GetString() ?? "",
+            Type = json.GetProperty("type").GetString() ?? "",
+            Shape = json.GetProperty("shape").GetString() ?? "sphere",
+            Physical = ParsePhysicalData(json.GetProperty("physical")),
+            Spectroscopy = ParseSpectroscopyData(json.GetProperty("spectroscopy")),
+            Signal = ParseSignalData(json.GetProperty("signal")),
+            CorrectAnswers = ParseCorrectAnswers(json.GetProperty("correctAnswers"))
+        };
+    }
+    
+    private PhysicalData ParsePhysicalData(JsonElement json)
+    {
+        var orbit = json.TryGetProperty("orbit", out var orbitElement) ? ParseOrbitData(orbitElement) : new OrbitData();
+        return new PhysicalData
+        {
+            Density = json.GetProperty("density").GetString() ?? "",
+            Gravity = json.GetProperty("gravity").GetString() ?? "",
+            Scale = json.GetProperty("scale").GetString() ?? "",
+            PhysicalSpotImage = json.GetProperty("physical-spotimage").GetString() ?? "",
+            PhysicalOrbit = json.GetProperty("physical-orbit").GetString() ?? "",
+            Orbit = orbit
+        };
+    }
+    
+    private OrbitData ParseOrbitData(JsonElement json)
+    {
+        return new OrbitData
+        {
+            MainBodySize = json.GetProperty("mainBodySize").GetInt32(),
+            OrbitingBodySize = json.GetProperty("orbitingBodySize").GetInt32(),
+            OrbitRadius = json.GetProperty("orbitRadius").GetInt32(),
+            OrbitTilt = json.GetProperty("orbitTilt").GetInt32(),
+            TiltAxis = json.GetProperty("tiltAxis").GetInt32(),
+            OrbitAngle = json.GetProperty("orbitAngle").GetInt32()
+        };
+    }
+    
+    private SpectroscopyData ParseSpectroscopyData(JsonElement json)
+    {
+        return new SpectroscopyData
+        {
+            Habitability = json.GetProperty("habitability").GetString() ?? "",
+            Value = json.GetProperty("Value").GetString() ?? "",
+            Organics = json.GetProperty("Organics").GetString() ?? "",
+            SpecHeatmapImage = json.GetProperty("spec-heatmapimage").GetString() ?? "",
+            SpecBands = json.GetProperty("spec-bands").GetString() ?? ""
+        };
+    }
+    
+    private SignalData ParseSignalData(JsonElement json)
+    {
+        return new SignalData
+        {
+            Text = json.GetProperty("text").GetString() ?? "",
+            ImagePath = json.TryGetProperty("imagePath", out var imgPath) ? imgPath.GetString() ?? "" : "",
+            AudioPath = json.TryGetProperty("audioPath", out var audPath) ? audPath.GetString() ?? "" : "",
+            Timestamp = json.TryGetProperty("timestamp", out var timestamp) ? timestamp.GetString() ?? "" : ""
+        };
+    }
+    
+    private CorrectAnswersData ParseCorrectAnswers(JsonElement json)
+    {
+        return new CorrectAnswersData
+        {
+            Classification = json.GetProperty("classification").GetString() ?? "",
+            LifeStatus = json.GetProperty("lifeStatus").GetString() ?? "",
+            Composition = json.GetProperty("composition").GetString() ?? "",
+            SalvageableTech = json.GetProperty("salvageableTech").GetString() ?? "",
+            Inhabitable = json.GetProperty("inhabitable").GetString() ?? ""
+        };
+    }
+    
+    private SpaceObject CreateDefaultObject() => new()
+    {
+        Id = "default", Name = "Unknown Object", Type = "planet",
+        Physical = new() { 
+            Density = "unknown", Gravity = "unknown", Scale = "unknown",
+            PhysicalSpotImage = "images/spotsphere1.jpg", PhysicalOrbit = "images/orbit1.jpg",
+            Orbit = new() { MainBodySize = 15, OrbitingBodySize = 5, OrbitRadius = 100, OrbitTilt = 45, TiltAxis = 0, OrbitAngle = 90 }
+        },
+        Spectroscopy = new() { Habitability = "unknown", Value = "unknown", Organics = "unknown", SpecHeatmapImage = "images/heatmap1.jpg", SpecBands = "images/spec-bands1.jpg" },
+        Signal = new() { Text = "No signal detected.", ImagePath = "", AudioPath = "", Timestamp = "Unknown" },
+        CorrectAnswers = new() { Classification = "planet", LifeStatus = "no life", Composition = "valuable", SalvageableTech = "none", Inhabitable = "yes" }
+    };
+    
+    private string GetSpectrumImage() => currentObject?.Spectroscopy?.SpecBands ?? "images/spec-bands1.jpg";
+    
+    private async Task ResetSignalGame()
+    {
+        try
+        {
+            if (signalGameRef != null)
+            {
+                await signalGameRef.InvokeVoidAsync("reset");
+            }
+        }
+        catch { }
+    }
+    
+    private async Task ResetOrbitGame()
+    {
+        try
+        {
+            if (orbitGameRef != null)
+            {
+                await orbitGameRef.InvokeVoidAsync("reset");
+            }
+        }
+        catch { }
+    }
+    
+    private async Task ResetRayDeflectionGame()
+    {
+        try
+        {
+            if (rayDeflectionGameRef != null)
+            {
+                await rayDeflectionGameRef.InvokeVoidAsync("reset");
+            }
+        }
+        catch { }
+    }
+    
+    private async Task AutoSolvePhysical()
+    {
+        physicalLoading = true;
+        StateHasChanged();
+        
+        await Task.Delay(2000);
+        
+        physicalLoaded = true;
+        physicalLoading = false;
+        await LoadPhysicalData();
+        StateHasChanged();
+    }
+    
+    private async Task AutoSolveSpectroscopy()
+    {
+        spectroscopyLoading = true;
+        StateHasChanged();
+        
+        await Task.Delay(2000);
+        
+        spectroscopyLoaded = true;
+        spectroscopyLoading = false;
+        await LoadSpectroscopyData();
+        StateHasChanged();
+    }
+    
+    private async Task AutoSolveSignal()
+    {
+        signalLoading = true;
+        StateHasChanged();
+        
+        await Task.Delay(2000);
+        
+        signalLoaded = true;
+        signalLoading = false;
+        await Task.Delay(400);
+        signalTextLoaded = true;
+        StateHasChanged();
+        
+        StartSignalTypewriter();
+        await CheckAllTabsComplete();
+    }
+    
+    private async Task LoadPhysicalData()
+    {
+        await LoadWithStaggeredImages("physical", new[] { 200, 400, 600 }, 
+            () => { ResetPhysicalImages(); },
+            () => { },
+            new Action[] { () => leftImageLoaded = true, () => topRightLoaded = true, () => bottomRightLoaded = true });
+    }
+    
+    private async Task LoadSpectroscopy()
+    {
+        await LoadWithStaggeredImages("spectroscopy", new[] { 300, 500, 700 },
+            () => { spectroscopyLoading = true; ResetSpectroscopyImages(); },
+            () => { spectroscopyLoading = false; spectroscopyLoaded = true; },
+            new Action[] { () => spectroLeftLoaded = true, () => spectroTopLoaded = true, () => spectroBottomLoaded = true });
+    }
+    
+    private async Task LoadSpectroscopyData()
+    {
+        await LoadWithStaggeredImages("spectroscopy", new[] { 300, 500, 700 },
+            () => { ResetSpectroscopyImages(); },
+            () => { },
+            new Action[] { () => spectroLeftLoaded = true, () => spectroTopLoaded = true, () => spectroBottomLoaded = true });
+        
+        await Task.Delay(100);
+        await InitializeSliceSlider();
+    }
+    
+    private async Task LoadSignal()
+    {
+        signalLoading = true; signalTextLoaded = false;
+        await Task.Delay(3000);
+        signalLoading = false; signalLoaded = true;
+        await Task.Delay(400);
+        signalTextLoaded = true;
+        StateHasChanged();
+        
+        StartSignalTypewriter();
+        
+        await CheckAllTabsComplete();
+    }
+    
+    private async Task LoadWithStaggeredImages(string type, int[] delays, Action startAction, Action completeAction, Action[] imageActions)
+    {
+        startAction();
+        await Task.Delay(3000);
+        completeAction();
+        
+        for (int i = 0; i < delays.Length && i < imageActions.Length; i++)
+        {
+            await Task.Delay(delays[i]);
+            imageActions[i]();
+            StateHasChanged();
+        }
+        
+        if (type == "physical" && !orbInitialized)
+        {
+            await Task.Delay(100);
+            await InitializeRotationOrb();
+            orbInitialized = true;
+        }
+        
+        await CheckAllTabsComplete();
+    }
+    
+    private bool dialogueSequenceRunning = false;
+    private bool sixthDialogueShown = false;
+    
+    private async Task CheckAllTabsComplete()
+    {
+        if (physicalLoaded && spectroscopyLoaded && signalLoaded && GlobalVars.ObjectsInvestigated == 0 && !dialogueSequenceRunning)
+        {
+            dialogueSequenceRunning = true;
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("first-investigation-complete");
+            }
+            dialogueSequenceRunning = false;
+        }
+
+        if (physicalLoaded && spectroscopyLoaded && signalLoaded && GlobalVars.ObjectsInvestigated == 3 && !dialogueSequenceRunning)
+        {
+            dialogueSequenceRunning = true;
+            await Task.Delay(5000);
+            if (dialoguePopup != null)
+            {
+                await ShowDialogueSequence(new[] { "fourth-investigation-complete1", "fourth-investigation-complete2", "fourth-investigation-complete3", "fourth-investigation-complete4" });
+            }
+            dialogueSequenceRunning = false;
+        }
+
+        if (physicalLoaded && spectroscopyLoaded && signalLoaded && GlobalVars.ObjectsInvestigated == 5 && !dialogueSequenceRunning && !sixthDialogueShown)
+        {
+            dialogueSequenceRunning = true;
+            sixthDialogueShown = true;
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await ShowDialogueSequence(new[] { "sixth-investigation-complete1", "sixth-investigation-complete2", "sixth-investigation-complete3", "sixth-investigation-complete4" });
+            }
+            dialogueSequenceRunning = false;
+        }
+    }
+    
+    private async Task ShowDialogueSequence(string[] dialogueIds)
+    {
+        foreach (var id in dialogueIds)
+        {
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue(id);
+            }
+        }
+    }
+    
+    private async Task InitializeRotationOrb()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("initRotationOrb", rotationOrbRef, DotNetObjectReference.Create(this), currentObject?.Type ?? "planet", currentObject?.Id ?? "default", currentObject?.Shape ?? "sphere");
+        }
+        catch
+        {
+            // Ignore JS errors for rotation orb
+        }
+    }
+    
+    private async Task InitializeSliceSlider()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("initCrossSectionSlider", 
+                "crossSectionCanvas", 
+                "crossSlider", 
+                currentObject?.Type ?? "planet", 
+                currentObject?.Id ?? "default", 
+                currentObject?.Shape ?? "sphere", 
+                0.0, 
+                currentObject?.Spectroscopy?.Value ?? "Low",
+                currentObject?.Spectroscopy?.Habitability ?? "Not Habitable",
+                currentObject?.Physical?.Density ?? "low",
+                currentObject?.Spectroscopy?.Organics ?? "Not Detected");
+        }
+        catch
+        {
+            // Ignore JS errors for slice slider
+        }
+    }
+    
+    [JSInvokable]
+    public void UpdateRotation(int x, int y)
+    {
+        lidarRotationX = x;
+        lidarRotationY = y;
+        StateHasChanged();
+    }
+    
+    private void ResetPhysicalImages() { leftImageLoaded = topRightLoaded = bottomRightLoaded = false; }
+    private void ResetSpectroscopyImages() { spectroLeftLoaded = spectroTopLoaded = spectroBottomLoaded = false; }
+    
+    private async Task SetPhysicalTab() 
+    { 
+        activeTab = "physical";
+        if (physicalLoaded)
+        {
+            StateHasChanged();
+            await Task.Delay(100);
+            await InitializeRotationOrb();
+        }
+    }
+    
+    private void SetSpectroscopyTab() 
+    { 
+        if (physicalLoaded) 
+        {
+            activeTab = "spectroscopy";
+            StateHasChanged();
+            _ = Task.Run(async () => {
+                await Task.Delay(100);
+                if (spectroscopyLoaded)
+                {
+                    await InitializeSliceSlider();
+                }
+                else
+                {
+                    await InitializeRayDeflectionGame();
+                }
+            });
+        }
+    }
+    
+    private async Task SetSignalTab() 
+    { 
+        if (spectroscopyLoaded) 
+        {
+            activeTab = "signal";
+            StateHasChanged();
+            await Task.Delay(100);
+            await InitializeSignalGame();
+        }
+    }
+    
+    private bool IsFormComplete() => !string.IsNullOrEmpty(classification) && !string.IsNullOrEmpty(lifeStatus) && !string.IsNullOrEmpty(composition) && !string.IsNullOrEmpty(salvageableTech) && !string.IsNullOrEmpty(inhabitable);
+    
+    private void SubmitForm()
+    {
+        if (!IsFormComplete()) return;
+        
+        attemptCount++;
+        
+        if (IsAnswerCorrect())
+        {
+            GlobalVars.CompletedInvestigations.Add(currentObject?.Id ?? "");
+            GlobalVars.ObjectsInvestigated++;
+            GlobalVars.UpdateGameState();
+            showSuccessPopup = true;
+        }
+        else
+        {
+            if (attemptCount >= 3)
+            {
+                // Third attempt - mark as failure and pass
+                GlobalVars.CompletedInvestigations.Add(currentObject?.Id ?? "");
+                GlobalVars.ObjectsInvestigated++;
+                GlobalVars.UpdateGameState();
+                showWarningPopup = true;
+                warningMessage = "MAXIMUM ATTEMPTS REACHED. OBJECT FLAGGED AS INVESTIGATION FAILURE.";
+            }
+            else
+            {
+                // Show warning for first two attempts
+                showWarningPopup = true;
+                warningMessage = $"INCORRECT ANALYSIS. ATTEMPT {attemptCount}/3. PLEASE REVIEW YOUR FINDINGS.";
+            }
+        }
+    }
+    
+    private bool IsAnswerCorrect() => classification == currentObject?.CorrectAnswers?.Classification && lifeStatus == currentObject?.CorrectAnswers?.LifeStatus && composition == currentObject?.CorrectAnswers?.Composition && salvageableTech == currentObject?.CorrectAnswers?.SalvageableTech && inhabitable == currentObject?.CorrectAnswers?.Inhabitable;
+    
+    private void AutoSolve()
+    {
+        classification = currentObject?.CorrectAnswers?.Classification ?? "";
+        lifeStatus = currentObject?.CorrectAnswers?.LifeStatus ?? "";
+        composition = currentObject?.CorrectAnswers?.Composition ?? "";
+        salvageableTech = currentObject?.CorrectAnswers?.SalvageableTech ?? "";
+        inhabitable = currentObject?.CorrectAnswers?.Inhabitable ?? "";
+    }
+    
+    private void StartSignalTypewriter()
+    {
+        var signalText = currentObject?.Signal?.Text ?? "No signal detected.";
+        var isDialogueMode = signalText.Contains("[dialogue]");
+        
+        if (isDialogueMode)
+        {
+            StartDialogueTypewriter(signalText);
+        }
+        else
+        {
+            StartNormalTypewriter(signalText);
+        }
+    }
+    
+    private void StartDialogueTypewriter(string signalText)
+    {
+        var processedText = ProcessSignalTags(signalText);
+        var lines = processedText.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+        var currentLineIndex = 0;
+        
+        signalTypewriterTimer?.Dispose();
+        displayedSignalText = "";
+        
+        void ShowNextLine()
+        {
+            if (currentLineIndex >= lines.Length)
+            {
+                currentLineIndex = 0; // Loop back to first line
+            }
+            
+            displayedSignalText = "";
+            var currentLine = lines[currentLineIndex].Trim();
+            var charIndex = 0;
+            
+            signalTypewriterTimer = new Timer(_ => {
+                if (charIndex < currentLine.Length)
+                {
+                    displayedSignalText += currentLine[charIndex];
+                    charIndex++;
+                    InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    signalTypewriterTimer?.Dispose();
+                    currentLineIndex++;
+                    _ = Task.Run(async () => {
+                        await Task.Delay(2000);
+                        ShowNextLine();
+                    });
+                }
+            }, null, 0, 100);
+        }
+        
+        ShowNextLine();
+    }
+    
+    private void StartNormalTypewriter(string signalText)
+    {
+        var processedText = ProcessSignalTags(signalText);
+        
+        signalTypewriterTimer?.Dispose();
+        displayedSignalText = "";
+        
+        var index = 0;
+        var speed = GetTypewriterSpeed(signalText);
+        
+        signalTypewriterTimer = new Timer(_ => {
+            if (index < processedText.Length)
+            {
+                if (processedText[index] == '\n')
+                {
+                    displayedSignalText += "<br>";
+                }
+                else
+                {
+                    displayedSignalText += processedText[index];
+                }
+                index++;
+                InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                signalTypewriterTimer?.Dispose();
+            }
+        }, null, 0, speed);
+    }
+    
+    private string ProcessSignalTags(string text)
+    {
+        return text.Replace("\\n", "\n")
+                  .Replace("[fast] ", "")
+                  .Replace("[slow] ", "")
+                  .Replace("[glitchy] ", "")
+                  .Replace("[dialogue] ", "");
+    }
+    
+    private int GetTypewriterSpeed(string text)
+    {
+        if (text.Contains("[fast]")) return 20;
+        if (text.Contains("[slow]")) return 100;
+        if (text.Contains("[glitchy]")) return new Random().Next(30, 150);
+        return 50; // default speed
+    }
+    
+
+    
+    private void ToggleDevMode()
+    {
+        GlobalVars.DevMode = !GlobalVars.DevMode;
+    }
+    
+    private void CloseWarningPopup()
+    {
+        showWarningPopup = false;
+        if (attemptCount >= 3)
+        {
+            Navigation.NavigateTo("/stellar-search");
+        }
+    }
+    
+    private void CloseSuccessPopup()
+    {
+        showSuccessPopup = false;
+        Navigation.NavigateTo("/stellar-search");
+    }
+    
+    public class SpaceObject
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public int X { get; set; }
+        public int Y { get; set; }
+        public string Type { get; set; } = "";
+        public string Shape { get; set; } = "";
+        public PhysicalData? Physical { get; set; }
+        public SpectroscopyData? Spectroscopy { get; set; }
+        public SignalData? Signal { get; set; }
+        public CorrectAnswersData? CorrectAnswers { get; set; }
+    }
+    
+    public class PhysicalData
+    {
+        public string Density { get; set; } = "";
+        public string Gravity { get; set; } = "";
+        public string Scale { get; set; } = "";
+        public string PhysicalSpotImage { get; set; } = "";
+        public string PhysicalOrbit { get; set; } = "";
+        public OrbitData? Orbit { get; set; }
+    }
+    
+    public class OrbitData
+    {
+        public int MainBodySize { get; set; } = 15;
+        public int OrbitingBodySize { get; set; } = 5;
+        public int OrbitRadius { get; set; } = 100;
+        public int OrbitTilt { get; set; } = 45;
+        public int TiltAxis { get; set; } = 0;
+        public int OrbitAngle { get; set; } = 90;
+    }
+    
+    public class SpectroscopyData
+    {
+        public string Habitability { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string Organics { get; set; } = "";
+        public string SpecHeatmapImage { get; set; } = "";
+        public string SpecBands { get; set; } = "";
+    }
+    
+    public class SignalData
+    {
+        public string Text { get; set; } = "";
+        public string ImagePath { get; set; } = "";
+        public string AudioPath { get; set; } = "";
+        public string Timestamp { get; set; } = "";
+    }
+    
+    public class CorrectAnswersData
+    {
+        public string Classification { get; set; } = "";
+        public string LifeStatus { get; set; } = "";
+        public string Composition { get; set; } = "";
+        public string SalvageableTech { get; set; } = "";
+        public string Inhabitable { get; set; } = "";
+    }
+}

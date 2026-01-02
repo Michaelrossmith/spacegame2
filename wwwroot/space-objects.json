@@ -1,0 +1,530 @@
+[
+  {
+    "id": "object-1",
+    "name": "Object1",
+    "x": 100,
+    "y": 50,
+    "type": "planet",
+    "shape": "sphere",
+    "clockStopped": "3349.01.15 12:00:00",
+    "physical": {
+      "density": "high",
+      "gravity": "medium",
+      "scale": "12,742 km diameter",
+      "physical-spotimage": "images/spotsphere2.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 20,
+        "orbitingBodySize": 6,
+        "orbitRadius": 120,
+        "orbitTilt": 45,
+        "tiltAxis": 30,
+        "orbitAngle": 90
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap1.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "High Possibility",
+      "Value": "High",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "No signal detected.",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "planet",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "none",
+      "inhabitable": "yes"
+    }
+  },
+  {
+    "id": "object-2",
+    "name": "Object2",
+    "x": -10,
+    "y": 50,
+    "type": "asteroid",
+    "shape": "debris",
+    "clockStopped": "3348.09.03 08:30:15",
+    "physical": {
+      "density": "medium",
+      "gravity": "low",
+      "scale": "2.1 km length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 8,
+        "orbitingBodySize": 3,
+        "orbitRadius": 60,
+        "orbitTilt": 75,
+        "tiltAxis": 180,
+        "orbitAngle": 45
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/asteroid-heatmap1.jpeg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "Low",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "No signal detected.",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "asteroid",
+      "lifeStatus": "no life",
+      "composition": "not valuable",
+      "salvageableTech": "none",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-3",
+    "name": "Object3",
+    "x": 20,
+    "y": 70,
+    "type": "planet",
+    "shape": "sphere",
+    "clockStopped": "3349.02.28 19:45:22",
+    "physical": {
+      "density": "high",
+      "gravity": "high",
+      "scale": "15,200 km diameter",
+      "physical-spotimage": "images/spotsphere3.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 22,
+        "orbitingBodySize": 5,
+        "orbitRadius": 130,
+        "orbitTilt": 60,
+        "tiltAxis": 120,
+        "orbitAngle": 135
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap2.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "Medium",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "No signal detected.",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "planet",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "none",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-4",
+    "name": "Object4",
+    "x": 40,
+    "y": 30,
+    "type": "satellite",
+    "shape": "satellite",
+    "clockStopped": "3347.06.12 22:18:09",
+    "physical": {
+      "density": "low",
+      "gravity": "none",
+      "scale": "45 m length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 5,
+        "orbitingBodySize": 2,
+        "orbitRadius": 40,
+        "orbitTilt": 90,
+        "tiltAxis": 45,
+        "orbitAngle": 0
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap1.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "Medium",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "[glitchy] EMER----------- ------. ----- -BREA DET-----. LIFE -------------. ---------------------------",
+      "imagePath": "images/signal-emergency.jpg",
+      "audioPath": "",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-5",
+    "name": "Object5",
+    "x": 80,
+    "y": 20,
+    "type": "satellite",
+    "shape": "satellite",
+    "clockStopped": "3348.04.07 15:33:28",
+    "physical": {
+      "density": "low",
+      "gravity": "none",
+      "scale": "120 m length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 8,
+        "orbitingBodySize": 3,
+        "orbitRadius": 50,
+        "orbitTilt": 10,
+        "tiltAxis": 10,
+        "orbitAngle": 0
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap1.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "High",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "[slow] djabclagiasdhfa4A%fha$ fjsadf!$() djf%@ dgj@^^(@ fjgkfg#$%%@@@# dfjgk!!@@@#",
+      "imagePath": "images/signal-mayday.jpg",
+      "audioPath": "audio/mayday-signal.mp3",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-6",
+    "name": "Object6",
+    "x": -50,
+    "y": 90,
+    "type": "satellite",
+    "shape": "debris",
+    "clockStopped": "3347.10.19 07:52:14",
+    "physical": {
+      "density": "medium",
+      "gravity": "none",
+      "scale": "85 m",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 6,
+        "orbitingBodySize": 2,
+        "orbitRadius": 35,
+        "orbitTilt": 50,
+        "tiltAxis": 50,
+        "orbitAngle": 45
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap2.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "High",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "---TRESS CALL FROM MINING VESSEL. CARGO BAY BREACH---. PRECIOUS METALS SECURE---. CREW STATUS: ---KNOWN. SALVAGE RIGHTS TRANSFER---.",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": "58210.10.19 07:52:14"
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-7",
+    "name": "Object7",
+    "x": 90,
+    "y": 10,
+    "type": "derelict_ship",
+    "shape": "spaceship",
+    "clockStopped": "3347.08.15 14:23:07",
+    "physical": {
+      "density": "medium",
+      "gravity": "none",
+      "scale": "180 m length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 12,
+        "orbitingBodySize": 4,
+        "orbitRadius": 70,
+        "orbitTilt": 45,
+        "tiltAxis": 90,
+        "orbitAngle": 180
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap2.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "High",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "---ERGENCY LOG FINAL ENTRY. REACTOR MELTDOWN IMMINENT. CREW EVACUATED TO ESCAPE PODS. SHIP LOST. SALVAGE RIGHTS HEREBY TRANSFERRED---",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": "202299.08.15 14:23:07"
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-8",
+    "name": "Object8",
+    "x": -70,
+    "y": 40,
+    "type": "monolith",
+    "shape": "rectangular-prism",
+    "clockStopped": "2891.12.03 00:00:00",
+    "physical": {
+      "density": "very high",
+      "gravity": "medium",
+      "scale": "2.4 km height",
+      "physical-spotimage": "images/spotsphere4.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 30,
+        "orbitingBodySize": 8,
+        "orbitRadius": 200,
+        "orbitTilt": 0,
+        "tiltAxis": 0,
+        "orbitAngle": 0
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap3.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Unknown",
+      "Value": "Unknown",
+      "Organics": "Unknown"
+    },
+    "signal": {
+      "text": "[SIGNAL ENCRYPTED] [ORIGIN: UNKNOWN] [AGE: 458 YEARS] [DECRYPTION: FAILED]",
+      "imagePath": "images/signal-encrypted.jpg",
+      "audioPath": "audio/alien-signal.mp3",
+      "timestamp": ""
+    },
+    "correctAnswers": {
+      "classification": "not enough information",
+      "lifeStatus": "not enough information",
+      "composition": "not enough information",
+      "salvageableTech": "not enough information",
+      "inhabitable": "not enough information"
+    }
+  },
+  {
+    "id": "object-9",
+    "name": "Object9",
+    "x": 30,
+    "y": -20,
+    "type": "research_station",
+    "shape": "station",
+    "clockStopped": "3348.11.28 09:45:12",
+    "physical": {
+      "density": "low",
+      "gravity": "none",
+      "scale": "95 m diameter",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 7,
+        "orbitingBodySize": 3,
+        "orbitRadius": 55,
+        "orbitTilt": 75,
+        "tiltAxis": 135,
+        "orbitAngle": 225
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap1.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "High",
+      "Organics": "Detected"
+    },
+    "signal": {
+      "text": "[fast] RESEARCH LOG 2847: BIOLOGICAL SAMPLES SECURED. QUARANTINE PROTOCOLS ACTIVE. \n STATION SEALED. DO NOT BOARD WITHOUT HAZMAT CLEARANCE.",
+      "imagePath": "images/signal-research.jpg",
+      "audioPath": "audio/research-log.mp3",
+      "timestamp": "1911002.11.28 09:45:12"
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "artificial life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-10",
+    "name": "Object10",
+    "x": -40,
+    "y": -60,
+    "type": "probe",
+    "shape": "probe",
+    "clockStopped": "3342.05.07 16:12:33",
+    "physical": {
+      "density": "low",
+      "gravity": "none",
+      "scale": "12 m length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 3,
+        "orbitingBodySize": 1,
+        "orbitRadius": 25,
+        "orbitTilt": 45,
+        "tiltAxis": 90,
+        "orbitAngle": 180
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap1.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "Low",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "[dialogue] Please \n Please \n It's so cold \n Please \n So \n Please \n Cold \n",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": "599177.05.07 16:12:33"
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "not valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-11",
+    "name": "Object11",
+    "x": 70,
+    "y": -40,
+    "type": "cargo_vessel",
+    "shape": "spaceship",
+    "clockStopped": "3346.03.22 11:07:41",
+    "physical": {
+      "density": "high",
+      "gravity": "low",
+      "scale": "340 m length",
+      "physical-spotimage": "images/spotsphere1.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 15,
+        "orbitingBodySize": 5,
+        "orbitRadius": 90,
+        "orbitTilt": 30,
+        "tiltAxis": 300,
+        "orbitAngle": 120
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/heatmap2.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Not Habitable",
+      "Value": "High",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "CARGO MANIFEST: RARE EARTH ELEMENTS, PROCESSED METALS, INDUSTRIAL COMPONENTS. HULL BREACH SECTOR 7. CARGO SECURE. CREW ABANDONED SHIP.",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": "15488.03.22 11:07:41"
+    },
+    "correctAnswers": {
+      "classification": "space junk",
+      "lifeStatus": "no life",
+      "composition": "valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  },
+  {
+    "id": "object-12",
+    "name": "Object12",
+    "x": 60,
+    "y": 50,
+    "type": "planet",
+    "shape": "sphere",
+    "clockStopped": "3348.07.31 13:26:55",
+    "physical": {
+      "density": "high",
+      "gravity": "high",
+      "scale": "8,900 km diameter",
+      "physical-spotimage": "images/spotsphere5.jpg",
+      "physical-orbit": "images/orbit1.jpg",
+      "orbit": {
+        "mainBodySize": 25,
+        "orbitingBodySize": 4,
+        "orbitRadius": 140,
+        "orbitTilt": 15,
+        "tiltAxis": 120,
+        "orbitAngle": 70
+      }
+    },
+    "spectroscopy": {
+      "spec-heatmapimage": "images/quarantine-heatmap.jpg",
+      "spec-bands": "images/spec-bands1.jpg",
+      "habitability": "Dangerous",
+      "Value": "Low",
+      "Organics": "Not Detected"
+    },
+    "signal": {
+      "text": "HO#W##RE##SE#EN##OPY###?",
+      "imagePath": "",
+      "audioPath": "",
+      "timestamp": "310391321.07.31 13:26:55"
+    },
+    "correctAnswers": {
+      "classification": "planet",
+      "lifeStatus": "no life",
+      "composition": "not valuable",
+      "salvageableTech": "yes",
+      "inhabitable": "no"
+    }
+  }
+]

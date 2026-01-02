@@ -1,0 +1,105 @@
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JSRuntime
+
+@if (showDialogue)
+{
+    <div class="dialogue-overlay" tabindex="0" @ref="dialogueOverlayRef">
+        <div class="dialogue-popup">
+            <div class="dialogue-portrait">
+                <img src="@currentDialogue.Portrait" alt="@currentDialogue.Speaker" />
+            </div>
+            <div class="dialogue-content">
+                <h4>@currentDialogue.Speaker</h4>
+                <p>@displayedText</p>
+                <button @onclick="CloseDialogue" class="dialogue-btn" disabled="@(!canClose)">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showDialogue = false;
+    private DialogueData currentDialogue = new();
+    private TaskCompletionSource<bool>? dialogueTask;
+    private string displayedText = "";
+    private Timer? typewriterTimer;
+    private ElementReference dialogueOverlayRef;
+    private bool canClose = false;
+    
+    public async Task ShowDialogue(string dialogueId)
+    {
+        try
+        {
+            var dialogues = await JSRuntime.InvokeAsync<JsonElement[]>("loadDialogueData");
+            var dialogue = dialogues.FirstOrDefault(d => d.GetProperty("id").GetString() == dialogueId);
+            
+            if (dialogue.ValueKind != JsonValueKind.Undefined)
+            {
+                currentDialogue = new DialogueData
+                {
+                    Speaker = dialogue.GetProperty("speaker").GetString() ?? "",
+                    Portrait = dialogue.GetProperty("portrait").GetString() ?? "",
+                    Text = dialogue.GetProperty("text").GetString() ?? ""
+                };
+                showDialogue = true;
+                displayedText = "";
+                canClose = false;
+                StartTypewriter();
+                dialogueTask = new TaskCompletionSource<bool>();
+                StateHasChanged();
+                await Task.Delay(100);
+                await dialogueOverlayRef.FocusAsync();
+                
+                // Enable closing after typewriter finishes
+                _ = Task.Run(async () => {
+                    await Task.Delay(500); // Minimum display time
+                    canClose = true;
+                    await InvokeAsync(StateHasChanged);
+                });
+                
+                await dialogueTask.Task;
+            }
+        }
+        catch { }
+    }
+    
+
+    private void CloseDialogue()
+    {
+        if (!canClose) return;
+        
+        typewriterTimer?.Dispose();
+        showDialogue = false;
+        canClose = false;
+        dialogueTask?.SetResult(true);
+        StateHasChanged();
+    }
+    
+    private void StartTypewriter()
+    {
+        typewriterTimer?.Dispose(); // Dispose existing timer first
+        var index = 0;
+        typewriterTimer = new Timer(_ => {
+            if (index < currentDialogue.Text.Length)
+            {
+                displayedText += currentDialogue.Text[index];
+                index++;
+                InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                typewriterTimer?.Dispose();
+                canClose = true;
+                InvokeAsync(StateHasChanged);
+            }
+        }, null, 0, 30);
+    }
+    
+    public class DialogueData
+    {
+        public string Speaker { get; set; } = "";
+        public string Portrait { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+}

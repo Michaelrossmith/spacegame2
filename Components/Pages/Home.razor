@@ -1,0 +1,39 @@
+﻿@page "/"
+@inject SpaceGame2.Services.GlobalVariables GlobalVars
+@implements IDisposable
+
+<PageTitle>Space Game</PageTitle>
+
+<div style="display: flex; align-items: center; justify-content: space-between;">
+    <h1>SPACE EXPLORATION TERMINAL</h1>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <button @onclick="ToggleDevMode" style="background: @(GlobalVars.DevMode ? "#ff0000" : "#333"); color: #fff; border: 1px solid #fff; padding: 5px 10px; font-size: 10px; cursor: pointer;">
+            DEV: @(GlobalVars.DevMode ? "ON" : "OFF")
+        </button>
+        <div style="font-size: 12px; text-align: right;">
+            <p style="margin: 0;">@GlobalVars.GetCurrentDateTime()</p>
+        </div>
+    </div>
+</div>
+
+<p>Select mission:</p>
+
+<p><NavLink href="/stellar-search">STELLAR SEARCH</NavLink></p>
+<p><NavLink href="/object-investigation">OBJECT INVESTIGATION</NavLink></p>
+
+@code {
+    protected override void OnInitialized()
+    {
+        GlobalVars.OnTimeChanged += () => InvokeAsync(StateHasChanged);
+    }
+    
+    private void ToggleDevMode()
+    {
+        GlobalVars.DevMode = !GlobalVars.DevMode;
+    }
+    
+    public void Dispose()
+    {
+        GlobalVars.OnTimeChanged -= () => InvokeAsync(StateHasChanged);
+    }
+}

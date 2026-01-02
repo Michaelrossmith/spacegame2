@@ -1,0 +1,427 @@
+@page "/stellar-search"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject SpaceGame2.Services.GlobalVariables GlobalVars
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<PageTitle>Stellar Search</PageTitle>
+
+<SpaceGame2.Components.DialoguePopup @ref="dialoguePopup" />
+
+<div style="display: flex; align-items: center; justify-content: space-between;">
+    <h1>STELLAR SEARCH</h1>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <button @onclick="ToggleDevMode" style="background: @(GlobalVars.DevMode ? "#ff0000" : "#333"); color: #fff; border: 1px solid #fff; padding: 5px 10px; font-size: 10px; cursor: pointer;">
+            DEV: @(GlobalVars.DevMode ? "ON" : "OFF")
+        </button>
+        @if (GlobalVars.DevMode)
+        {
+            <div style="font-size: 12px; text-align: right;">
+                <p style="margin: 0;">DEBUG: Current Object ID: @GlobalVars.CurrentObjectId | Completed: [@string.Join(", ", GlobalVars.CompletedInvestigations)] | Game State: @GlobalVars.GameState</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="search-container">
+    <div class="mission-window">
+        <div class="timer-display">
+            <div class="timer-label">SYSTEM TIME</div>
+            <div class="timer-value">@GlobalVars.GetCurrentDateTime()</div>
+        </div>
+        <h3>MISSION TARGET</h3>
+        <div class="target-info">
+            <p>@currentTarget.Name</p>
+            <p>X: @currentTarget.X</p>
+            <p>Y: @currentTarget.Y</p>
+        </div>
+        
+        @if (GlobalVars.DevMode)
+        {
+            <div class="object-list">
+                <h4>QUICK NAV</h4>
+                @foreach (var obj in allObjects)
+                {
+                    <button @onclick="() => JumpToObject(obj)" class="nav-btn @(obj.Id == GlobalVars.CurrentObjectId ? "active" : "")">@obj.Name</button>
+                }
+            </div>
+        }
+    </div>
+    
+    <div class="star-window">
+        <div class="crosshair-horizontal"></div>
+        <div class="crosshair-vertical"></div>
+        <div class="coordinates-overlay">
+            <span>X: @currentX</span> | <span>Y: @currentY</span>
+        </div>
+        @foreach (var star in stars)
+        {
+            <div class="star" style="left: @(star.X)px; top: @(star.Y)px; opacity: @star.Brightness"></div>
+        }
+    </div>
+    
+    <div class="investigation-prompt">
+        @if (IsAtTarget())
+        {
+            <h3>TARGET FOUND!</h3>
+            <button @onclick="GoToInvestigation" class="investigate-btn">INVESTIGATE OBJECT</button>
+        }
+        else
+        {
+            <h3>PROXIMITY</h3>
+            <div class="proximity-slider">
+                <div class="slider-track">
+                    <div class="slider-fill" style="width: @GetProximityPercentage()%"></div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="controls">
+    <button @onclick="MoveLeft">←</button>
+    <button @onclick="MoveRight">→</button>
+    <button @onclick="MoveUp">↑</button>
+    <button @onclick="MoveDown">↓</button>
+    @if (GlobalVars.DevMode)
+    {
+        <button @onclick="AutoNavigate" class="debug-btn">AUTO NAV</button>
+        <button @onclick="ResetProgress" class="debug-btn">RESET PROGRESS</button>
+    }
+</div>
+
+@if (showLoadingOverlay)
+{
+    <div class="loading-overlay">
+        <div class="loading-box">
+            <div class="loading-text">LOADING INVESTIGATION SYSTEMS...</div>
+            <div class="loading-dots">...</div>
+        </div>
+    </div>
+}
+
+@code {
+    private int currentX = 0;
+    private int currentY = 0;
+    private List<Star> stars = new();
+    private bool hasLoadedOnReturn = false;
+
+    private List<Location> locations = new();
+    private List<SpaceObject> allObjects = new();
+    private Location currentTarget = new() { Name = "Loading...", X = 0, Y = 0 };
+    private SpaceGame2.Components.DialoguePopup? dialoguePopup;
+    private bool showLoadingOverlay = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        GlobalVars.OnTimeChanged += () => InvokeAsync(StateHasChanged);
+        GlobalVars.GameStarted = true;
+        GlobalVars.UpdateGameState();
+        await LoadLocations();
+        GenerateStars();
+        hasLoadedOnReturn = true;
+    }
+    
+    public void Dispose()
+    {
+        GlobalVars.OnTimeChanged -= () => InvokeAsync(StateHasChanged);
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("addKeyboardListener", DotNetObjectReference.Create(this));
+        }
+        
+        if (!firstRender && !hasLoadedOnReturn)
+        {
+            await LoadLocations();
+            hasLoadedOnReturn = true;
+            StateHasChanged();
+        }
+        
+        if (firstRender && GlobalVars.ObjectsInvestigated == 0)
+        {
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("start1");
+                await dialoguePopup.ShowDialogue("start2");
+                await dialoguePopup.ShowDialogue("start3");
+                await dialoguePopup.ShowDialogue("start4");
+                await dialoguePopup.ShowDialogue("first-target");
+            }
+        }
+
+        if (firstRender && GlobalVars.ObjectsInvestigated == 1)
+        {
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("second-target1");
+                await dialoguePopup.ShowDialogue("second-target2");
+            }
+        }
+
+        if (firstRender && GlobalVars.ObjectsInvestigated == 3)
+        {
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("fourth-target1");
+                await dialoguePopup.ShowDialogue("fourth-target2");
+                await dialoguePopup.ShowDialogue("fourth-target3");
+                await dialoguePopup.ShowDialogue("fourth-target4");
+            }
+        }
+
+        if (firstRender && GlobalVars.ObjectsInvestigated == 5)
+        {
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("sixth-target1");
+                await dialoguePopup.ShowDialogue("sixth-target2");
+                await dialoguePopup.ShowDialogue("sixth-target3");
+            }
+        }
+
+        if (firstRender && GlobalVars.ObjectsInvestigated == 10)
+        {
+            await Task.Delay(500);
+            if (dialoguePopup != null)
+            {
+                await dialoguePopup.ShowDialogue("major-realization1");
+                await dialoguePopup.ShowDialogue("major-realization2");
+                await dialoguePopup.ShowDialogue("major-realization3");
+                await dialoguePopup.ShowDialogue("major-realization4");
+                await dialoguePopup.ShowDialogue("major-realization5");
+                await dialoguePopup.ShowDialogue("major-realization6");
+            }
+        }
+    }
+    
+    protected override void OnParametersSet()
+    {
+        hasLoadedOnReturn = false;
+    }
+
+    private async Task LoadLocations()
+    {
+        try
+        {
+            var jsonData = await JSRuntime.InvokeAsync<JsonElement[]>("loadJsonData");
+            allObjects = jsonData.Select(ParseSpaceObject).ToList();
+            
+            // Find next uncompleted object
+            var nextObject = allObjects.FirstOrDefault(o => !GlobalVars.CompletedInvestigations.Contains(o.Id));
+            
+            if (nextObject != null)
+            {
+                currentTarget = new Location { Name = nextObject.Name, X = nextObject.X, Y = nextObject.Y };
+                GlobalVars.CurrentObjectId = nextObject.Id;
+            }
+            else
+            {
+                currentTarget = new Location { Name = "All Complete", X = 0, Y = 0 };
+            }
+        }
+        catch
+        {
+            currentTarget = new Location { Name = "Error Loading", X = 0, Y = 0 };
+        }
+    }
+    
+    private SpaceObject ParseSpaceObject(JsonElement json)
+    {
+        return new SpaceObject
+        {
+            Id = json.GetProperty("id").GetString() ?? "",
+            Name = json.GetProperty("name").GetString() ?? "",
+            X = json.GetProperty("x").GetInt32(),
+            Y = json.GetProperty("y").GetInt32()
+        };
+    }
+
+    private void GenerateStars()
+    {
+        stars.Clear();
+        var seed = (currentX / 10) * 1000 + (currentY / 10);
+        var random = new Random(seed);
+        for (int i = 0; i < 100; i++)
+        {
+            stars.Add(new Star
+            {
+                X = random.Next(0, 600),
+                Y = random.Next(0, 400),
+                Brightness = Math.Round(random.NextDouble(), 1)
+            });
+        }
+    }
+
+    [JSInvokable]
+    public void HandleKeyPress(string key)
+    {
+        switch (key)
+        {
+            case "ArrowLeft":
+                MoveLeft();
+                break;
+            case "ArrowRight":
+                MoveRight();
+                break;
+            case "ArrowUp":
+                MoveUp();
+                break;
+            case "ArrowDown":
+                MoveDown();
+                break;
+            case "Enter":
+                if (IsAtTarget())
+                {
+                    GoToInvestigation();
+                }
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private void MoveLeft()
+    {
+        currentX -= 10;
+        GenerateStars();
+    }
+
+    private void MoveRight()
+    {
+        currentX += 10;
+        GenerateStars();
+    }
+
+    private void MoveUp()
+    {
+        currentY += 10;
+        GenerateStars();
+    }
+
+    private void MoveDown()
+    {
+        currentY -= 10;
+        GenerateStars();
+    }
+
+    private bool IsAtTarget()
+    {
+        return Math.Abs(currentX - currentTarget.X) <= 5 && Math.Abs(currentY - currentTarget.Y) <= 5;
+    }
+    
+    private string GetProximityStatus()
+    {
+        var distance = Math.Sqrt(Math.Pow(currentX - currentTarget.X, 2) + Math.Pow(currentY - currentTarget.Y, 2));
+        
+        if (distance <= 10) return "BURNING HOT";
+        if (distance <= 25) return "HOT";
+        if (distance <= 50) return "WARM";
+        if (distance <= 100) return "COOL";
+        if (distance <= 200) return "COLD";
+        return "FREEZING";
+    }
+    
+    private int GetProximityPercentage()
+    {
+        var distance = Math.Sqrt(Math.Pow(currentX - currentTarget.X, 2) + Math.Pow(currentY - currentTarget.Y, 2));
+        var maxDistance = 300.0; // Maximum expected distance
+        var percentage = Math.Max(0, 100 - (distance / maxDistance * 100));
+        return (int)Math.Round(percentage);
+    }
+
+    private void JumpToObject(SpaceObject obj)
+    {
+        currentTarget = new Location { Name = obj.Name, X = obj.X, Y = obj.Y };
+        GlobalVars.CurrentObjectId = obj.Id;
+        currentX = obj.X;
+        currentY = obj.Y;
+        
+        // Set ObjectsInvestigated based on object position (simulate progression)
+        var objectIndex = allObjects.FindIndex(o => o.Id == obj.Id);
+        if (objectIndex >= 0)
+        {
+            GlobalVars.ObjectsInvestigated = objectIndex;
+            GlobalVars.CompletedInvestigations.Clear();
+            for (int i = 0; i < objectIndex; i++)
+            {
+                GlobalVars.CompletedInvestigations.Add(allObjects[i].Id);
+            }
+        }
+        
+        GenerateStars();
+        StateHasChanged();
+    }
+
+    private void GoToInvestigation()
+    {
+        GlobalVars.PlayerX = currentX;
+        GlobalVars.PlayerY = currentY;
+        showLoadingOverlay = true;
+        StateHasChanged();
+        
+        // Show target found dialogue
+        _ = Task.Run(async () => {
+            await dialoguePopup?.ShowDialogue("target-found");
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/object-investigation");
+        });
+    }
+    
+    private void AutoNavigate()
+    {
+        currentX = currentTarget.X;
+        currentY = currentTarget.Y;
+        GenerateStars();
+        StateHasChanged();
+    }
+    
+    private void ToggleDevMode()
+    {
+        GlobalVars.DevMode = !GlobalVars.DevMode;
+    }
+    
+    private async Task ResetProgress()
+    {
+        GlobalVars.CompletedInvestigations.Clear();
+        currentX = 0;
+        currentY = 0;
+        await LoadLocations();
+        GenerateStars();
+        StateHasChanged();
+    }
+
+    public class Star
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public double Brightness { get; set; }
+    }
+
+    public class Location
+    {
+        public string Name { get; set; } = "";
+        public int X { get; set; }
+        public int Y { get; set; }
+    }
+    
+    public class SpaceObject
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = "";
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+    }
+}

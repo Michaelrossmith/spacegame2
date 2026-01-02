@@ -1,0 +1,182 @@
+[
+  {
+    "id": "start1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Hey there sleepy head. Sun's shining... hehehe"
+  },
+  {
+    "id": "start2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Okay yeah we've been on ice way longer than intended, like 2000 years, so you probably feel as crap as I do. And we're in the middle of nowhere. Untouched wilderness."
+  },
+  {
+    "id": "start3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "So lets just do a run and see if the equipment still works properly."
+  },
+  {
+    "id": "start4",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "And by equipment I mean us..."
+  },
+  {
+    "id": "start5",
+    "speaker": "Commander Hayes", 
+    "portrait": "images/commander.jpg",
+    "text": "I've uploaded coordinates for your first target. Use the navigation system to locate it."
+  },
+  {
+    "id": "first-target-found",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg", 
+    "text": "Okaaaay. Basic brain function is looking goood. Now begin your investigation. Gather all the data you can."
+  },
+  {
+    "id": "first-investigation-complete",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "We're a little slow but that's expected. All within tolenance. Now fill in your summary and send it off."
+  },
+  {
+    "id": "second-target1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Great we seem to be in business. And I'm sure the brain fog will clear as we keep going. Lets do a few more."
+  },
+  {
+    "id": "second-target2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Here's another one."
+  },
+  {
+    "id": "fourth-target1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Fuck it looks like no one in key crew can figure out where we are."
+  },
+  {
+    "id": "fourth-target2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "And we're just finding mostly nonsense. Which makes sense I guess. We've flown off into infinity with a 3rd of the human race in a big fridge after all. But one thing doesn't sit right with me."
+  },
+  {
+    "id": "fourth-target3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Why are there so few stars?"
+  },
+  {
+    "id": "fourth-target4",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Keep sending those reports while I try to figure this out."
+  },
+  {
+    "id": "fourth-investigation-complete1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Is that.......a.......satelite?!"
+  },
+  {
+    "id": "fourth-investigation-complete2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "A HUMAN satelite?! At least I think it could be."
+  },
+  {
+    "id": "fourth-investigation-complete3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Quickly, see if there's anything else out there. I'll send a few probes and get down to the bottom of this."
+  },
+  {
+    "id": "fourth-investigation-complete4",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "A fucking satellite..."
+  },
+  {
+    "id": "sixth-target1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Had a look at the satellite. And yeah, it's human. Its so advanced I almost hestitate to say human."
+  },
+  {
+    "id": "sixth-target2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "I can't begin to think what this means. Just keep sending them through I suppose. I'll change my search algorithms to look for more of this kind of debris."
+  },
+  {
+    "id": "sixth-target3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "And see if you can find any dates on them so we can tell when their clocks stopped."
+  },
+  {
+    "id": "sixth-investigation-complete1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "This clock stopped 54000 years after we left earth..."
+  },
+  {
+    "id": "sixth-investigation-complete2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "I guess our clock is a little off. My only guess could be that our ship encountered an extremely high gravity object and we've been essentially in stasis for a very long time."
+  },
+  {
+    "id": "sixth-investigation-complete3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Then there must be someone out here somewhere. Right??"
+  },
+  {
+    "id": "sixth-investigation-complete4",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Keep track of those timestamps and see how far this rabit hole goes. I'm gonna go print me a whiskey."
+  },
+  {
+    "id": "major-realization1",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "From studying the composition of the objects in your reports, Research is saying that trying to figure out what Time we are might be futile."
+  },
+  {
+    "id": "major-realization2",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "We've been out for so long that stars have died out. Galaxies have died out. And... our neighboring stars are out of reach of us."
+  },
+  {
+    "id": "major-realization3",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "All life that has existed has risen, fallen, and canibalized itself a million times over."
+  },
+  {
+    "id": "major-realization4",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "We're at the darkest pages of the story of the universe. And there's something worse than any horror out here."
+  },
+  {
+    "id": "major-realization5",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "Silence."
+  },
+  {
+    "id": "major-realization6",
+    "speaker": "Commander Hayes",
+    "portrait": "images/commander.jpg",
+    "text": "And what can we do but keep trying to find a home? Sigh. Your work is really great. I just feel... exhausted. I guess."
+  }
+]

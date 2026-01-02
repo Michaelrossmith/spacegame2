@@ -1,0 +1,36 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<canvas @ref="canvasRef" width="400" height="400" style="width: 100%; height: 100%; image-rendering: crisp-edges;"></canvas>
+
+@code {
+    [Parameter] public string ObjectType { get; set; } = "sphere";
+    [Parameter] public string ObjectId { get; set; } = "default";
+    [Parameter] public string ObjectShape { get; set; } = "sphere";
+    [Parameter] public int RotationX { get; set; } = 20;
+    [Parameter] public int RotationY { get; set; } = 30;
+    [Parameter] public int RotationZ { get; set; } = 0;
+    
+    private ElementReference canvasRef;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await GenerateLidar();
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (canvasRef.Id != null)
+        {
+            await GenerateLidar();
+        }
+    }
+    
+    private async Task GenerateLidar()
+    {
+        await JSRuntime.InvokeVoidAsync("generateLidar", canvasRef, ObjectType, ObjectId, RotationX, RotationY, RotationZ, ObjectShape);
+    }
+}

@@ -1,0 +1,708 @@
+import { useEffect, useRef, useState } from 'react';
+
+interface SineComponent {
+  frequency: number;
+  amplitude: number;
+  phase: number;
+}
+
+interface ComplexWave {
+  components: SineComponent[];
+  offset: number;
+  color: { r: number; g: number; b: number };
+}
+
+const CANVAS_WIDTH = 640;
+const CANVAS_HEIGHT = 400;
+const WAVE_DISPLAY_HEIGHT = 300;
+const CONTROL_AREA_HEIGHT = CANVAS_HEIGHT - WAVE_DISPLAY_HEIGHT;
+const RESOLUTION = 160; // Low res for pixel effect
+
+export default function App() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [waves, setWaves] = useState<ComplexWave[]>([]);
+  const [solutionOffsets, setSolutionOffsets] = useState<number[]>([]);
+  const [maxAmplitude, setMaxAmplitude] = useState(0);
+  const [draggingWave, setDraggingWave] = useState<number | null>(null);
+  const [won, setWon] = useState(false);
+  const [targetAmplitude, setTargetAmplitude] = useState(2.5);
+  const [showControls, setShowControls] = useState(true);
+  const [frequencyMultiplier, setFrequencyMultiplier] = useState(1.0);
+
+  // Generate a complex wave that works well for cancellation
+  const generateComplexWave = (seed: number): SineComponent[] => {
+    const components: SineComponent[] = [];
+    
+    // Use seed for deterministic randomness
+    const random = (min: number, max: number, idx: number) => {
+      const x = Math.sin(seed * 12.9898 + idx * 78.233) * 43758.5453;
+      return min + (x - Math.floor(x)) * (max - min);
+    };
+    
+    // Base frequency - use similar frequencies across waves for better interference
+    const baseFreq = 0.8 + random(0, 0.6, 0);
+    
+    for (let i = 0; i < 10; i++) {
+      const harmonic = i + 1;
+      const frequency = baseFreq * harmonic * (0.95 + random(0, 0.1, i));
+      
+      // Varying amplitudes
+      const amplitude = (0.2 + random(0, 0.3, i + 10)) / (1 + i * 0.2);
+      
+      // Random phase
+      const phase = random(0, Math.PI * 2, i + 20);
+      
+      components.push({ frequency, amplitude, phase });
+    }
+    
+    return components;
+  };
+
+  // Initialize waves
+  useEffect(() => {
+    resetGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resetGame = () => {
+    // Generate 3 waves that at aligned offsets create constructive interference
+    const seed = Math.random() * 1000;
+    
+    const newWaves: ComplexWave[] = [
+      {
+        components: generateComplexWave(seed + 1),
+        offset: 0, // Start at solution
+        color: { r: 255, g: 255, b: 255 }
+      },
+      {
+        components: generateComplexWave(seed + 2),
+        offset: 0, // Start at solution
+        color: { r: 255, g: 255, b: 255 }
+      },
+      {
+        components: generateComplexWave(seed + 3),
+        offset: 0, // Start at solution
+        color: { r: 255, g: 255, b: 255 }
+      }
+    ];
+    
+    // Calculate the maximum amplitude for a given set of offsets
+    const calculateMaxAmplitudeForOffsets = (waves: ComplexWave[], offsets: number[]): number => {
+      let max = 0;
+      const samples = 500;
+      
+      for (let i = 0; i < samples; i++) {
+        const x = (i / samples) * Math.PI * 4;
+        let sum = 0;
+        
+        for (let w = 0; w < waves.length; w++) {
+          const wave = waves[w];
+          for (const component of wave.components) {
+            sum += component.amplitude * Math.sin(component.frequency * frequencyMultiplier * x + component.phase + offsets[w]);
+          }
+        }
+        
+        const value = Math.abs(sum);
+        if (value > max) max = value;
+      }
+      
+      return max;
+    };
+    
+    // Find the BEST alignment (highest peak) - this is the solution
+    let highestAmplitude = 0;
+    let bestOffsets = [0, 0, 0];
+    
+    // Grid search for best alignment
+    const gridSteps = 8;
+    for (let i = 0; i < gridSteps; i++) {
+      for (let j = 0; j < gridSteps; j++) {
+        for (let k = 0; k < gridSteps; k++) {
+          const testOffsets = [
+            (i / gridSteps) * Math.PI * 4,
+            (j / gridSteps) * Math.PI * 4,
+            (k / gridSteps) * Math.PI * 4
+          ];
+          
+          const maxAmp = calculateMaxAmplitudeForOffsets(newWaves, testOffsets);
+          
+          if (maxAmp > highestAmplitude) {
+            highestAmplitude = maxAmp;
+            bestOffsets = testOffsets;
+          }
+        }
+      }
+    }
+    
+    // Refine the search around the best position to find even higher peak
+    const refineSteps = 20;
+    const refineRange = Math.PI / 4;
+    
+    for (let attempt = 0; attempt < refineSteps; attempt++) {
+      const testOffsets = [
+        bestOffsets[0] + (Math.random() - 0.5) * 2 * refineRange,
+        bestOffsets[1] + (Math.random() - 0.5) * 2 * refineRange,
+        bestOffsets[2] + (Math.random() - 0.5) * 2 * refineRange
+      ];
+      
+      const maxAmp = calculateMaxAmplitudeForOffsets(newWaves, testOffsets);
+      
+      if (maxAmp > highestAmplitude) {
+        highestAmplitude = maxAmp;
+        bestOffsets = testOffsets;
+      }
+    }
+    
+    // Set target to 96% of the highest achievable peak (4% less)
+    const calculatedTarget = highestAmplitude * 0.96;
+    setTargetAmplitude(calculatedTarget);
+    
+    // Store the solution offsets
+    setSolutionOffsets(bestOffsets);
+    
+    // Find the offset combination that gives the LOWEST amplitude (destructive interference)
+    let lowestAmplitude = Infinity;
+    let worstOffsets = [0, 0, 0];
+    
+    // Grid search for worst alignment
+    for (let i = 0; i < gridSteps; i++) {
+      for (let j = 0; j < gridSteps; j++) {
+        for (let k = 0; k < gridSteps; k++) {
+          const testOffsets = [
+            (i / gridSteps) * Math.PI * 4,
+            (j / gridSteps) * Math.PI * 4,
+            (k / gridSteps) * Math.PI * 4
+          ];
+          
+          const maxAmp = calculateMaxAmplitudeForOffsets(newWaves, testOffsets);
+          
+          if (maxAmp < lowestAmplitude) {
+            lowestAmplitude = maxAmp;
+            worstOffsets = testOffsets;
+          }
+        }
+      }
+    }
+    
+    // Refine the search for flattest wave
+    for (let attempt = 0; attempt < refineSteps; attempt++) {
+      const testOffsets = [
+        worstOffsets[0] + (Math.random() - 0.5) * 2 * refineRange,
+        worstOffsets[1] + (Math.random() - 0.5) * 2 * refineRange,
+        worstOffsets[2] + (Math.random() - 0.5) * 2 * refineRange
+      ];
+      
+      const maxAmp = calculateMaxAmplitudeForOffsets(newWaves, testOffsets);
+      
+      if (maxAmp < lowestAmplitude) {
+        lowestAmplitude = maxAmp;
+        worstOffsets = testOffsets;
+      }
+    }
+    
+    // Set waves to the worst (most destructive) positions
+    newWaves[0].offset = worstOffsets[0] % (Math.PI * 4);
+    newWaves[1].offset = worstOffsets[1] % (Math.PI * 4);
+    newWaves[2].offset = worstOffsets[2] % (Math.PI * 4);
+    
+    // Ensure offsets are positive
+    if (newWaves[0].offset < 0) newWaves[0].offset += Math.PI * 4;
+    if (newWaves[1].offset < 0) newWaves[1].offset += Math.PI * 4;
+    if (newWaves[2].offset < 0) newWaves[2].offset += Math.PI * 4;
+    
+    setWaves(newWaves);
+    setWon(false);
+  };
+
+  // Calculate wave value at position x
+  const calculateWaveValue = (wave: ComplexWave, x: number): number => {
+    let sum = 0;
+    for (const component of wave.components) {
+      sum += component.amplitude * Math.sin(component.frequency * frequencyMultiplier * x + component.phase + wave.offset);
+    }
+    return sum;
+  };
+
+  // Calculate composite wave value
+  const calculateCompositeValue = (x: number): number => {
+    let sum = 0;
+    for (const wave of waves) {
+      sum += calculateWaveValue(wave, x);
+    }
+    return sum;
+  };
+
+  // Handle mouse down on control bars
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    
+    // Check if clicking in control area
+    if (y >= WAVE_DISPLAY_HEIGHT) {
+      const relY = y - WAVE_DISPLAY_HEIGHT;
+      const barHeight = CONTROL_AREA_HEIGHT / 3;
+      const waveIndex = Math.floor(relY / barHeight);
+      
+      if (waveIndex >= 0 && waveIndex < 3) {
+        setDraggingWave(waveIndex);
+      }
+    }
+  };
+
+  // Handle mouse move for dragging
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (draggingWave === null) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    
+    // Calculate control box bounds
+    const controlBoxPadding = CANVAS_WIDTH * 0.1;
+    const controlBoxLeft = controlBoxPadding + 20; // Track start
+    const controlBoxRight = CANVAS_WIDTH - controlBoxPadding - 30; // Track end
+    const trackWidth = controlBoxRight - controlBoxLeft;
+    
+    // Clamp x to track bounds
+    const clampedX = Math.max(controlBoxLeft, Math.min(controlBoxRight, x));
+    
+    // Convert clamped x position to offset (0 to 4*PI)
+    const normalizedX = (clampedX - controlBoxLeft) / trackWidth;
+    const offset = normalizedX * Math.PI * 4;
+    
+    setWaves(prev => {
+      const newWaves = [...prev];
+      newWaves[draggingWave] = {
+        ...newWaves[draggingWave],
+        offset: offset
+      };
+      return newWaves;
+    });
+  };
+
+  // Handle mouse up
+  const handleMouseUp = () => {
+    setDraggingWave(null);
+  };
+
+  // Calculate max amplitude and check win condition
+  useEffect(() => {
+    if (waves.length === 0) return;
+    
+    let max = 0;
+    const samples = 500;
+    
+    for (let i = 0; i < samples; i++) {
+      const x = (i / samples) * Math.PI * 4;
+      const value = Math.abs(calculateCompositeValue(x));
+      if (value > max) max = value;
+    }
+    
+    setMaxAmplitude(max);
+    
+    if (max >= targetAmplitude && !won) {
+      setWon(true);
+    }
+  }, [waves, won, targetAmplitude, frequencyMultiplier]);
+
+  // Calculate proximity to solution for each wave (0-1, where 1 is perfect)
+  const calculateProximity = (waveIndex: number): number => {
+    if (solutionOffsets.length === 0 || !waves[waveIndex]) return 0;
+    
+    const currentOffset = waves[waveIndex].offset;
+    const solutionOffset = solutionOffsets[waveIndex];
+    
+    // Calculate shortest angular distance (accounting for wraparound)
+    const diff = Math.abs(currentOffset - solutionOffset);
+    const wrappedDiff = Math.min(diff, Math.PI * 4 - diff);
+    
+    // Convert to proximity (0 = far, 1 = perfect)
+    const maxDistance = Math.PI * 2; // Half the range
+    const proximity = Math.max(0, 1 - (wrappedDiff / maxDistance));
+    
+    return proximity;
+  };
+
+  // Calculate overall proximity (average of all waves)
+  const calculateOverallProximity = (): number => {
+    if (waves.length === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < waves.length; i++) {
+      sum += calculateProximity(i);
+    }
+    return sum / waves.length;
+  };
+
+  // Render with pixel-perfect low-res rendering
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || waves.length === 0) return;
+    
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+    
+    // Create low-res ImageData
+    const imageData = ctx.createImageData(RESOLUTION, Math.floor(RESOLUTION * (CANVAS_HEIGHT / CANVAS_WIDTH)));
+    const data = imageData.data;
+    const resHeight = imageData.height;
+    
+    // Helper: Check if point is near line
+    const isPointNearLine = (px: number, py: number, x1: number, y1: number, x2: number, y2: number, threshold: number = 0.5): boolean => {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lengthSq = dx * dx + dy * dy;
+      if (lengthSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2) <= threshold;
+      
+      let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+      t = Math.max(0, Math.min(1, t));
+      
+      const nearestX = x1 + t * dx;
+      const nearestY = y1 + t * dy;
+      const dist = Math.sqrt((px - nearestX) ** 2 + (py - nearestY) ** 2);
+      
+      return dist <= threshold;
+    };
+    
+    // Calculate wave display scale
+    const waveDisplayHeight = WAVE_DISPLAY_HEIGHT;
+    const centerY = waveDisplayHeight / 2;
+    const scale = 30; // Pixels per unit amplitude
+    
+    // Sample the composite wave
+    const wavePoints: Array<{ x: number; y: number }> = [];
+    const samples = RESOLUTION;
+    
+    for (let i = 0; i < samples; i++) {
+      const x = (i / samples) * Math.PI * 4;
+      const value = calculateCompositeValue(x);
+      const screenX = (i / samples) * CANVAS_WIDTH;
+      const screenY = centerY - value * scale;
+      wavePoints.push({ x: screenX, y: screenY });
+    }
+    
+    // Render each pixel
+    for (let py = 0; py < resHeight; py++) {
+      for (let px = 0; px < RESOLUTION; px++) {
+        const worldX = (px / RESOLUTION) * CANVAS_WIDTH;
+        const worldY = (py / resHeight) * CANVAS_HEIGHT;
+        
+        let color = { r: 0, g: 0, b: 0 }; // Default black
+        
+        // Check if in wave display area
+        if (worldY < WAVE_DISPLAY_HEIGHT) {
+          // Draw center line
+          if (Math.abs(worldY - centerY) < 1) {
+            color = { r: 40, g: 40, b: 40 };
+          }
+          
+          // Don't draw target lines in pixel buffer - will draw in overlay instead
+          
+          // Draw composite wave
+          for (let i = 0; i < wavePoints.length - 1; i++) {
+            if (isPointNearLine(worldX, worldY, wavePoints[i].x, wavePoints[i].y, wavePoints[i + 1].x, wavePoints[i + 1].y, 1.5)) {
+              color = { r: 0, g: 255, b: 255 };
+              break;
+            }
+          }
+        } else {
+          // Control area
+          const relY = worldY - WAVE_DISPLAY_HEIGHT;
+          const barHeight = CONTROL_AREA_HEIGHT / 3;
+          const waveIndex = Math.floor(relY / barHeight);
+          
+          if (waveIndex >= 0 && waveIndex < 3) {
+            const wave = waves[waveIndex];
+            const barY = WAVE_DISPLAY_HEIGHT + waveIndex * barHeight + barHeight / 2;
+            
+            // Just keep it black, no bar backgrounds
+          }
+        }
+        
+        // Set pixel color
+        const index = (py * RESOLUTION + px) * 4;
+        data[index] = color.r;
+        data[index + 1] = color.g;
+        data[index + 2] = color.b;
+        data[index + 3] = 255;
+      }
+    }
+    
+    // Create offscreen canvas for low-res image
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = RESOLUTION;
+    offCanvas.height = resHeight;
+    const offCtx = offCanvas.getContext('2d');
+    if (!offCtx) return;
+    
+    offCtx.putImageData(imageData, 0, 0);
+    
+    // Scale up to main canvas
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.drawImage(offCanvas, 0, 0, RESOLUTION, resHeight, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    
+    // === HUD OVERLAY ===
+    ctx.strokeStyle = '#00ff00';
+    ctx.fillStyle = '#00ff00';
+    ctx.lineWidth = 1;
+    ctx.font = '10px monospace';
+    
+    // Grid lines in wave area
+    ctx.globalAlpha = 0.1;
+    ctx.beginPath();
+    for (let x = 0; x <= CANVAS_WIDTH; x += 40) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, WAVE_DISPLAY_HEIGHT);
+    }
+    for (let y = 0; y <= WAVE_DISPLAY_HEIGHT; y += 40) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(CANVAS_WIDTH, y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    
+    // Draw target amplitude lines in overlay (always visible)
+    const targetLineY1 = centerY - targetAmplitude * scale;
+    const targetLineY2 = centerY + targetAmplitude * scale;
+    
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    
+    ctx.beginPath();
+    ctx.moveTo(0, targetLineY1);
+    ctx.lineTo(CANVAS_WIDTH, targetLineY1);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(0, targetLineY2);
+    ctx.lineTo(CANVAS_WIDTH, targetLineY2);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    // Corner brackets
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    const bracketSize = 15;
+    const margin = 10;
+    
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(margin + bracketSize, margin);
+    ctx.lineTo(margin, margin);
+    ctx.lineTo(margin, margin + bracketSize);
+    ctx.stroke();
+    
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(CANVAS_WIDTH - margin - bracketSize, margin);
+    ctx.lineTo(CANVAS_WIDTH - margin, margin);
+    ctx.lineTo(CANVAS_WIDTH - margin, margin + bracketSize);
+    ctx.stroke();
+    
+    // Status display
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '9px monospace';
+    let statusY = 25;
+    
+    ctx.fillText('WAVE INTERFERENCE', 20, statusY);
+    statusY += 12;
+    ctx.fillText(`AMPLITUDE: ${maxAmplitude.toFixed(2)}`, 20, statusY);
+    statusY += 12;
+    ctx.fillText(`TARGET: ${targetAmplitude.toFixed(2)}`, 20, statusY);
+    
+    // Instructions - top right
+    ctx.fillStyle = '#00ff00';
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'right';
+    let instrY = 25;
+    ctx.fillText('DRAG BARS TO ALIGN', CANVAS_WIDTH - 20, instrY);
+    instrY += 10;
+    ctx.fillText('WAVE PEAKS', CANVAS_WIDTH - 20, instrY);
+    ctx.textAlign = 'left';
+    
+    // === PROXIMITY DIAL ===
+    const overallProximity = calculateOverallProximity();
+    const dialCenterX = CANVAS_WIDTH / 2;
+    const dialCenterY = 50;
+    const dialRadius = 30;
+    
+    // Success state - fill the dial
+    if (won) {
+      // Pulsing glow effect for success
+      const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7; // 0.4-1.0 range
+      ctx.shadowBlur = 30 * pulse;
+      ctx.shadowColor = '#00ff00';
+      
+      // Fill circle
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+      ctx.beginPath();
+      ctx.arc(dialCenterX, dialCenterY, dialRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.shadowBlur = 0;
+    }
+    
+    // Outer circle
+    ctx.strokeStyle = won ? '#00ff00' : '#00ff00';
+    ctx.lineWidth = won ? 3 : 2;
+    ctx.beginPath();
+    ctx.arc(dialCenterX, dialCenterY, dialRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Inner glow when close to solution (but not won yet)
+    if (!won && overallProximity > 0.7) {
+      const glowIntensity = (overallProximity - 0.7) / 0.3; // 0-1 range
+      ctx.shadowBlur = 20 * glowIntensity;
+      ctx.shadowColor = '#00ff00';
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(dialCenterX, dialCenterY, dialRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    
+    if (won) {
+      // Success indicator - checkmark or full circle
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 3;
+      
+      // Draw checkmark
+      ctx.beginPath();
+      ctx.moveTo(dialCenterX - 10, dialCenterY);
+      ctx.lineTo(dialCenterX - 3, dialCenterY + 8);
+      ctx.lineTo(dialCenterX + 12, dialCenterY - 8);
+      ctx.stroke();
+    } else {
+      // Dial needle (points to proximity)
+      const needleAngle = -Math.PI / 2 + (overallProximity * Math.PI * 1.5); // -90° to +180°
+      const needleLength = dialRadius - 5;
+      ctx.strokeStyle = overallProximity > 0.9 ? '#00ff00' : '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(dialCenterX, dialCenterY);
+      ctx.lineTo(
+        dialCenterX + Math.cos(needleAngle) * needleLength,
+        dialCenterY + Math.sin(needleAngle) * needleLength
+      );
+      ctx.stroke();
+      
+      // Center dot
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(dialCenterX, dialCenterY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Proximity percentage text or success message
+    ctx.fillStyle = won ? '#00ff00' : (overallProximity > 0.9 ? '#00ff00' : '#ffffff');
+    ctx.font = won ? '12px monospace' : '10px monospace';
+    ctx.textAlign = 'center';
+    
+    if (won) {
+      ctx.fillText('SUCCESS', dialCenterX, dialCenterY + dialRadius + 14);
+    } else {
+      ctx.fillText(`${(overallProximity * 100).toFixed(0)}%`, dialCenterX, dialCenterY + dialRadius + 12);
+      ctx.fillText('ALIGNMENT', dialCenterX, dialCenterY + dialRadius + 22);
+    }
+    ctx.textAlign = 'left';
+    
+    // Wave labels in control area with proximity glow
+    ctx.font = '8px monospace';
+    
+    // White border box around control area with padding
+    const controlBoxPadding = CANVAS_WIDTH * 0.1; // 10% padding
+    const controlBoxLeft = controlBoxPadding;
+    const controlBoxRight = CANVAS_WIDTH - controlBoxPadding;
+    const controlBoxWidth = controlBoxRight - controlBoxLeft;
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      controlBoxPadding, 
+      WAVE_DISPLAY_HEIGHT + 10, 
+      CANVAS_WIDTH - controlBoxPadding * 2, 
+      CONTROL_AREA_HEIGHT - 20
+    );
+    
+    for (let i = 0; i < 3; i++) {
+      const wave = waves[i];
+      if (!wave) continue; // Skip if wave doesn't exist
+      
+      const proximity = calculateProximity(i);
+      const barY = WAVE_DISPLAY_HEIGHT + 20 + i * ((CONTROL_AREA_HEIGHT - 40) / 3) + ((CONTROL_AREA_HEIGHT - 40) / 6);
+      
+      // Draw white horizontal line for slider track
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(controlBoxLeft + 20, barY);
+      ctx.lineTo(controlBoxRight - 30, barY);
+      ctx.stroke();
+      
+      // Calculate slider position within the control box
+      const trackWidth = controlBoxRight - controlBoxLeft - 50;
+      const sliderX = controlBoxLeft + 20 + (wave.offset / (Math.PI * 4)) * trackWidth;
+      const sliderWidth = 16;
+      const sliderHeight = 20;
+      
+      // Glow effect when close to solution
+      if (proximity > 0.85) {
+        const glowIntensity = (proximity - 0.85) / 0.15;
+        ctx.shadowBlur = 15 * glowIntensity;
+        ctx.shadowColor = `rgb(${wave.color.r}, ${wave.color.g}, ${wave.color.b})`;
+      }
+      
+      // Draw enhanced slider knob
+      ctx.fillStyle = `rgb(${wave.color.r}, ${wave.color.g}, ${wave.color.b})`;
+      ctx.fillRect(sliderX - sliderWidth / 2, barY - sliderHeight / 2, sliderWidth, sliderHeight);
+      
+      // Slider outline
+      ctx.strokeStyle = proximity > 0.85 ? '#ffffff' : '#888888';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sliderX - sliderWidth / 2, barY - sliderHeight / 2, sliderWidth, sliderHeight);
+      
+      ctx.shadowBlur = 0;
+      
+      // Proximity dots
+      ctx.fillStyle = proximity > 0.9 ? '#00ff00' : proximity > 0.7 ? '#ffff00' : '#666666';
+      ctx.beginPath();
+      ctx.arc(controlBoxRight - 15, barY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+  }, [waves, maxAmplitude, won, draggingWave, targetAmplitude, frequencyMultiplier]);
+
+  return (
+    <div className="size-full flex items-center justify-center bg-black p-8 gap-8">
+      <div className="flex flex-col gap-4">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          className="border border-white cursor-pointer"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={resetGame}
+            className="px-6 py-2 bg-white text-black font-mono hover:bg-gray-300 transition-colors"
+          >
+            NEW PUZZLE
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
