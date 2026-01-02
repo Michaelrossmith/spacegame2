@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SpaceGame2")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1c168d7bc08347a0cef6e9654a24f23e8276c07e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+caed68baaa6353b97c12bf3de88363f8eef4241b")]
 [assembly: System.Reflection.AssemblyProductAttribute("SpaceGame2")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SpaceGame2")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
